@@ -15,7 +15,9 @@ process. `htop` lacks GPU, `nvtop` lacks CPU/RAM. triop fills the gap.
 - **Live totals**: CPU %, RAM used/total, GPU busy %, VRAM in use — with htop-style bars.
 - **Per-process table**: PID, user, name, CPU %, RSS, GPU %, VRAM.
 - **Sorting**: by CPU, MEM, GPU, PID or name (`1`–`5`), reversed with `r`.
-- **Kill processes**: `Ctrl+K` sends SIGTERM to the selected process (with safety guards).
+- **Kill processes**: `Ctrl+K` sends SIGTERM to the selected process, `Ctrl+Shift+K` escalates to SIGKILL (with safety guards).
+- **Inspector bar**: the selected process shows its full `/proc` cmdline and a per-engine
+  GPU breakdown (`render / copy / video…`) in ms.
 - **Non-interactive mode**: `triop --print [N]` prints one table and exits — script friendly.
 - **Adjustable refresh rate** from 250 ms upward (`-` / `+`).
 - **Transparent background** (uses your terminal's real background, SGR default) and
@@ -67,6 +69,7 @@ triop --version
 |---|---|
 | `q` / `Ctrl+C` | Quit |
 | `Ctrl+K` | Kill selected process (SIGTERM) |
+| `Ctrl+Shift+K` | Force kill selected process (SIGKILL) |
 | `1`–`5` | Sort by CPU / MEM / GPU / PID / Name |
 | `r` | Reverse sort order |
 | `j` `k` `↑` `↓` `PgUp` `PgDn` | Navigate |
