@@ -238,6 +238,12 @@ def test_kill_process_guards_and_signal(monkeypatch, tmp_path):
     ok, msg = triop.kill_process(4242, killer=triop.os.kill, own_pid=999)
     assert ok and llamadas == [(4242, signal.SIGTERM)]
 
+    llamadas.clear()
+    ok, msg = triop.kill_process(4242, sig=signal.SIGKILL,
+                                 killer=triop.os.kill, own_pid=999)
+    assert ok and llamadas == [(4242, signal.SIGKILL)]
+    assert "SIGKILL" in msg
+
     ok, _ = triop.kill_process(1, killer=triop.os.kill, own_pid=999)
     assert not ok                                   # nunca init
     ok, _ = triop.kill_process(999, killer=triop.os.kill, own_pid=999)
@@ -263,6 +269,15 @@ def test_ctrl_k_binding_registered():
     claves = {k for k, _ in pares}
     assert "ctrl+k" in claves
     assert any("kill" in str(a) for _, a in pares)
+
+
+def test_ctrl_shift_k_force_kill_binding_registered():
+    pares = [(b.key if hasattr(b, "key") else b[0],
+              b.action if hasattr(b, "action") else b[1])
+             for b in triop.TriopApp.BINDINGS]
+    claves = {k for k, _ in pares}
+    assert "ctrl+shift+k" in claves
+    assert any("force" in str(a) for _, a in pares)
 
 
 # --------------------------------------------------------------- TUI (pilot)

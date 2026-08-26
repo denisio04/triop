@@ -510,23 +510,27 @@ def sort_rows(rows: list[ProcRow], key: str, desc: bool) -> list[ProcRow]:
 def kill_process(
     pid: int,
     *,
+    sig: int | None = None,
     killer=None,
     own_pid: int | None = None,
 ) -> tuple[bool, str]:
-    """SIGTERM al proceso; nunca a init ni a triop. Devuelve (ok, mensaje)."""
+    """Señal al proceso (SIGTERM por defecto); nunca a init ni a triop."""
     send = killer if killer is not None else os.kill
     own = os.getpid() if own_pid is None else own_pid
+    if sig is None:
+        sig = signal.SIGTERM
+    nombre = signal.Signals(sig).name
     if pid <= 1:
         return False, f"pid {pid} intocable"
     if pid == own:
         return False, "triop no se suicida"
     try:
-        send(pid, signal.SIGTERM)
+        send(pid, sig)
     except PermissionError:
         return False, f"sin permiso para matar {pid} (prueba sudo)"
     except ProcessLookupError:
         return False, f"{pid} ya no existe"
-    return True, f"SIGTERM enviado a {pid}"
+    return True, f"{nombre} enviado a {pid}"
 
 
 def summary_line(snap: Snapshot) -> str:
@@ -594,6 +598,7 @@ class TriopApp(App):
     BINDINGS = [
         ("q", "quit", "Salir"),
         ("ctrl+k", "kill_selected", "Matar"),
+        ("ctrl+shift+k", "force_kill_selected", "Forzar"),
         ("1", "sort('cpu')", "CPU"),
         ("2", "sort('mem')", "MEM"),
         ("3", "sort('gpu')", "GPU"),
@@ -662,6 +667,12 @@ class TriopApp(App):
         yield Footer()
 
     def action_kill_selected(self) -> None:
+        self._kill_selected(signal.SIGTERM)
+
+    def action_force_kill_selected(self) -> None:
+        self._kill_selected(signal.SIGKILL)
+
+    def _kill_selected(self, sig: int) -> None:
         table = self.query_one(DataTable)
         try:
             if not table.row_count or not 0 <= table.cursor_row < table.row_count:
@@ -670,7 +681,7 @@ class TriopApp(App):
             pid = int(str(table.get_row_at(table.cursor_row)[0]))
         except Exception:
             return
-        ok, msg = kill_process(pid)
+        ok, msg = kill_process(pid, sig=sig)
         self.notify(("✓ " if ok else "✗ ") + msg,
                     severity="information" if ok else "error")
 
