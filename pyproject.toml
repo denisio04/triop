@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triop"
+version = "0.1.0"
+description = "Per-process CPU/RAM/GPU terminal monitor (htop meets nvtop)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13"
+dependencies = ["textual>=0.80"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Monitoring",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["monitor", "tui", "gpu", "cpu", "ram", "htop", "nvtop", "proc"]
+
+[project.scripts]
+triop = "triop:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.setuptools]
+py-modules = ["triop"]
