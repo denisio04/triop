@@ -6,19 +6,9 @@ both system-wide and **per process**, sortable by any column.
 There was no single terminal tool on Linux that showed all three metrics per
 process. `htop` lacks GPU, `nvtop` lacks CPU/RAM. triop fills the gap.
 
-```
- CPU   ███████░░░░░░░░░░░░░░  23.4%
- RAM   ██████████░░░░░░░░░░  3.9 GiB / 7.7 GiB · 50%
- GPU   ███████████████░░░░░  64.2%
- VRAM                       357.6 MiB
- 19:47:02 · 1.00s ▮ orden CPU desc
-
-  PID | USUARIO | NOMBRE     |  CPU% |       MEM | GPU% |      VRAM
-------+---------+------------+-------+-----------+------+----------
-34741 | denisio | opencode   |  98.7 | 911.8 MiB |    – |         –
- 1379 | denisio | zed-editor |  24.0 | 293.8 MiB | 21.4 | 140.0 MiB
-  749 | denisio | Hyprland   |   7.1 | 168.5 MiB | 50.5 | 173.4 MiB
-```
+<p align="center">
+  <img src="docs/screenshot.png" alt="triop running on Hyprland" width="720">
+</p>
 
 ## Features
 
