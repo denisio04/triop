@@ -533,6 +533,30 @@ def kill_process(
     return True, f"{nombre} enviado a {pid}"
 
 
+def build_inspector_text(
+    pid: int,
+    proc: Path = PROC,
+    row: "ProcRow | None" = None,
+):
+    """Detalle del proceso seleccionado: cmdline viva + desglose de motores."""
+    from rich.text import Text
+
+    d = proc / str(pid)
+    try:
+        cmd = (d / "cmdline").read_bytes().replace(b"\0", b" ").decode(
+            "utf-8", "replace").strip()
+    except OSError:
+        return Text(f"PID {pid} · (proceso terminado)", style="dim")
+    if not cmd:
+        cmd = f"[{row.name}]" if row is not None else f"[{pid}]"
+    partes = [f"PID {pid}", cmd]
+    if row is not None and row.engines_delta_ns:
+        engs = " · ".join(f"{k} {v / 1e6:.1f} ms"
+                          for k, v in sorted(row.engines_delta_ns.items()))
+        partes.append(f"GPU [{engs}]")
+    return Text("  |  ".join(partes), style="dim")
+
+
 def summary_line(snap: Snapshot) -> str:
     t = snap.totals
     ram_pct = f" ({t.ram_used * 100 // t.ram_total}%)" if t.ram_total else ""
@@ -579,6 +603,17 @@ def run_print(n: int, interval: float, sort_key: str, proc: Path = PROC) -> int:
 SUMMARY_COLUMNS = ("PID", "USUARIO", "NOMBRE", "CPU%", "MEM", "GPU%", "VRAM")
 
 
+class ProcTable(DataTable):
+    """DataTable que refresca el inspector al mover el cursor."""
+
+    def watch_cursor_coordinate(self, *args, **kwargs) -> None:
+        super().watch_cursor_coordinate(*args, **kwargs)
+        try:
+            self.app._update_inspector()
+        except Exception:
+            pass
+
+
 class TriopApp(App):
     """App principal: cabecera de totales + tabla ordenable + pie."""
 
@@ -589,6 +624,8 @@ class TriopApp(App):
     #summary { dock: top; height: auto; padding: 0 0 1 0; background: ansi_default; }
     #procs { height: 1fr; border: none;
             scrollbar-size-vertical: 0; scrollbar-size-horizontal: 0; }
+    #inspector { dock: bottom; height: auto; padding: 1 0 0 0;
+                 background: ansi_default; }
     DataTable { background: ansi_default; }
     Footer { background: ansi_default; }
     #procs .scrollbar,
@@ -620,6 +657,7 @@ class TriopApp(App):
         self.state = SamplerState()
         self.sample_count = 0
         self.last_snapshot: Snapshot | None = None
+        self.last_inspected_pid: int | None = None
         self._timer = None
         self.palette = load_palette()
         try:
@@ -663,7 +701,8 @@ class TriopApp(App):
 
     def compose(self):
         yield Static("", id="summary")
-        yield DataTable(id="procs", cursor_type="row")
+        yield ProcTable(id="procs", cursor_type="row")
+        yield Static("", id="inspector")
         yield Footer()
 
     def action_kill_selected(self) -> None:
@@ -697,8 +736,28 @@ class TriopApp(App):
         snap = sample_system(self.state)
         self.sample_count += 1
         self.last_snapshot = snap
-        self._update_summary()
-        self._fill_table(snap)
+        if self.is_mounted:
+            self._update_summary()
+            self._fill_table(snap)
+            self._update_inspector()
+
+    def _update_inspector(self) -> None:
+        if not self.is_mounted or self.last_snapshot is None:
+            return
+        try:
+            table = self.query_one(ProcTable)
+            if not table.row_count or not 0 <= table.cursor_row < table.row_count:
+                return
+            pid = int(str(table.get_row_at(table.cursor_row)[0]))
+        except Exception:
+            return
+        row = next((r for r in self.last_snapshot.procs if r.pid == pid), None)
+        self.last_inspected_pid = pid
+        try:
+            self.query_one("#inspector", Static).update(
+                build_inspector_text(pid, proc=PROC, row=row))
+        except Exception:
+            pass
 
     def _update_summary(self) -> None:
         if self.last_snapshot is None:

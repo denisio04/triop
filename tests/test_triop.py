@@ -280,6 +280,30 @@ def test_ctrl_shift_k_force_kill_binding_registered():
     assert any("force" in str(a) for _, a in pares)
 
 
+# ------------------------------------------------------------- inspector
+
+
+def test_inspector_shows_cmdline_and_engine_breakdown(fake):
+    from triop import ProcRow
+
+    two_state_fixture(fake)
+    (fake.root / "42" / "cmdline").write_bytes(b"/usr/bin/renderd\x00--vsync")
+    row = ProcRow(pid=42, user="u", name="renderd", cpu_pct=1.0, rss=1,
+                  gpu_pct=5.0, vram=384 * 1024,
+                  engines_delta_ns={"render": 12_000_000, "copy": 0})
+    txt = triop.build_inspector_text(42, proc=fake.root, row=row)
+    s = txt.plain
+    assert "PID 42" in s
+    assert "/usr/bin/renderd --vsync" in s          # cmdline completa viva
+    assert "render" in s and "12.0 ms" in s         # desglose por motor
+    assert "copy" in s
+
+
+def test_inspector_vanished_process(fake):
+    txt = triop.build_inspector_text(424242, proc=fake.root)
+    assert "terminado" in txt.plain
+
+
 # --------------------------------------------------------------- TUI (pilot)
 
 
@@ -322,6 +346,8 @@ class TestPilot(unittest.IsolatedAsyncioTestCase):
             assert app.sample_count >= 3                    # DoD §8.3
             table = app.query_one(DataTable)
             assert table.row_count >= 1                     # filas reales del sistema
+            assert isinstance(app.last_inspected_pid, int)  # inspector alimentado
+            assert app.last_inspected_pid == int(str(table.get_row_at(table.cursor_row)[0]))
 
             await pilot.press("3")                          # ordenar por GPU
             assert app.sort_key == "gpu"
